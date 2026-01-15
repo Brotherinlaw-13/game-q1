@@ -57,8 +57,8 @@ export class Fighter extends Phaser.GameObjects.Sprite {
     // Set origin to bottom center for proper ground alignment
     this.setOrigin(0.5, 1);
 
-    // Scale up the sprite for better visibility
-    this.setScale(2);
+    // Scale for 128x128 sprites (smaller scale since sprites are bigger now)
+    this.setScale(1.5);
 
     // Flip based on facing direction
     this.setFlipX(this.facingDirection === 'left');
@@ -182,9 +182,10 @@ export class Fighter extends Phaser.GameObjects.Sprite {
   }
 
   public getHurtbox(): { x: number; y: number; width: number; height: number } {
-    // Hitbox based on sprite size (scaled)
-    const width = 64 * 2; // sprite width * scale
-    const height = 96 * 2; // sprite height * scale
+    // Hitbox based on sprite size (128x128 * 1.5 scale)
+    const scale = 1.5;
+    const width = 128 * scale;
+    const height = 128 * scale;
     return {
       x: this.x - width / 2,
       y: this.y - height,
@@ -207,11 +208,11 @@ export class Fighter extends Phaser.GameObjects.Sprite {
     // Calculate hitbox position based on facing direction
     const hitboxData = this.currentMove.hitbox;
     const directionMultiplier = this.facingDirection === 'right' ? 1 : -1;
-    const scale = 2;
+    const scale = 1.5;
 
     return {
       x: this.x + (hitboxData.x * directionMultiplier * scale) - (hitboxData.width * scale) / 2,
-      y: this.y - 96 * scale + hitboxData.y * scale - (hitboxData.height * scale) / 2,
+      y: this.y - 128 * scale + hitboxData.y * scale - (hitboxData.height * scale) / 2,
       width: hitboxData.width * scale,
       height: hitboxData.height * scale,
     };

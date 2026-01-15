@@ -14,15 +14,15 @@ export class PreloadScene extends Phaser.Scene {
     });
     loadingText.setOrigin(0.5);
 
-    // Load sprite sheets
+    // Load sprite sheets (128x128 frames)
     this.load.spritesheet('fighter-will', '/assets/sprites/will/spritesheet.png', {
-      frameWidth: 64,
-      frameHeight: 96,
+      frameWidth: 128,
+      frameHeight: 128,
     });
 
     this.load.spritesheet('fighter-ed', '/assets/sprites/ed/spritesheet.png', {
-      frameWidth: 64,
-      frameHeight: 96,
+      frameWidth: 128,
+      frameHeight: 128,
     });
   }
 
