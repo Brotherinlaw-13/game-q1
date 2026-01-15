@@ -1,121 +1,76 @@
 import Phaser from 'phaser';
-import { CHARACTER_INFO } from '../../constants/gameConstants';
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
     super({ key: 'PreloadScene' });
   }
 
+  preload(): void {
+    // Show loading text
+    const loadingText = this.add.text(640, 360, 'Loading...', {
+      fontSize: '32px',
+      color: '#ffffff',
+      fontFamily: 'monospace',
+    });
+    loadingText.setOrigin(0.5);
+
+    // Load sprite sheets
+    this.load.spritesheet('fighter-will', '/assets/sprites/will/spritesheet.png', {
+      frameWidth: 64,
+      frameHeight: 96,
+    });
+
+    this.load.spritesheet('fighter-ed', '/assets/sprites/ed/spritesheet.png', {
+      frameWidth: 64,
+      frameHeight: 96,
+    });
+  }
+
   create(): void {
-    this.createFighterTextures();
-    this.createHitboxTexture();
+    // Create animations for both characters
+    this.createAnimations('will');
+    this.createAnimations('ed');
+
+    // Create effect textures
     this.createEffectTextures();
 
-    // All textures created, start the fight scene
+    // Start the fight scene
     this.scene.start('FightScene');
   }
 
-  private createFighterTextures(): void {
-    // Create Will's texture (red fighter)
-    const willGraphics = this.make.graphics({ x: 0, y: 0 });
-    willGraphics.fillStyle(Phaser.Display.Color.HexStringToColor(CHARACTER_INFO.will.color).color, 1);
-    willGraphics.fillRect(0, 0, 80, 120);
-    // Add some details - head area
-    willGraphics.fillStyle(0xffd6c4, 1); // Skin tone
-    willGraphics.fillRect(20, 5, 40, 35);
-    // Body outline
-    willGraphics.lineStyle(2, 0x000000, 1);
-    willGraphics.strokeRect(0, 0, 80, 120);
-    willGraphics.generateTexture('fighter-will', 80, 120);
-    willGraphics.destroy();
+  private createAnimations(character: 'will' | 'ed'): void {
+    const key = `fighter-${character}`;
+    const anims = this.anims;
 
-    // Create Ed's texture (blue fighter)
-    const edGraphics = this.make.graphics({ x: 0, y: 0 });
-    edGraphics.fillStyle(Phaser.Display.Color.HexStringToColor(CHARACTER_INFO.ed.color).color, 1);
-    edGraphics.fillRect(0, 0, 80, 120);
-    // Add some details - head area
-    edGraphics.fillStyle(0xffd6c4, 1); // Skin tone
-    edGraphics.fillRect(20, 5, 40, 35);
-    // Body outline
-    edGraphics.lineStyle(2, 0x000000, 1);
-    edGraphics.strokeRect(0, 0, 80, 120);
-    edGraphics.generateTexture('fighter-ed', 80, 120);
-    edGraphics.destroy();
+    // Animation config based on spritesheet.json
+    const animConfigs = [
+      { name: 'idle', start: 0, end: 3, frameRate: 8, repeat: -1 },
+      { name: 'walk', start: 4, end: 9, frameRate: 10, repeat: -1 },
+      { name: 'jump', start: 10, end: 13, frameRate: 10, repeat: 0 },
+      { name: 'crouch', start: 14, end: 15, frameRate: 8, repeat: 0 },
+      { name: 'high_punch', start: 16, end: 20, frameRate: 15, repeat: 0 },
+      { name: 'low_punch', start: 21, end: 24, frameRate: 15, repeat: 0 },
+      { name: 'high_kick', start: 25, end: 30, frameRate: 12, repeat: 0 },
+      { name: 'low_kick', start: 31, end: 35, frameRate: 12, repeat: 0 },
+      { name: 'hit', start: 36, end: 38, frameRate: 10, repeat: 0 },
+      { name: 'block', start: 39, end: 40, frameRate: 8, repeat: 0 },
+      { name: 'victory', start: 41, end: 44, frameRate: 6, repeat: -1 },
+      { name: 'defeat', start: 45, end: 49, frameRate: 8, repeat: 0 },
+    ];
 
-    // Create crouching variants (shorter height)
-    const willCrouchGraphics = this.make.graphics({ x: 0, y: 0 });
-    willCrouchGraphics.fillStyle(Phaser.Display.Color.HexStringToColor(CHARACTER_INFO.will.color).color, 1);
-    willCrouchGraphics.fillRect(0, 0, 90, 70);
-    willCrouchGraphics.fillStyle(0xffd6c4, 1);
-    willCrouchGraphics.fillRect(25, 5, 40, 30);
-    willCrouchGraphics.lineStyle(2, 0x000000, 1);
-    willCrouchGraphics.strokeRect(0, 0, 90, 70);
-    willCrouchGraphics.generateTexture('fighter-will-crouch', 90, 70);
-    willCrouchGraphics.destroy();
+    for (const config of animConfigs) {
+      const animKey = `${character}-${config.name}`;
 
-    const edCrouchGraphics = this.make.graphics({ x: 0, y: 0 });
-    edCrouchGraphics.fillStyle(Phaser.Display.Color.HexStringToColor(CHARACTER_INFO.ed.color).color, 1);
-    edCrouchGraphics.fillRect(0, 0, 90, 70);
-    edCrouchGraphics.fillStyle(0xffd6c4, 1);
-    edCrouchGraphics.fillRect(25, 5, 40, 30);
-    edCrouchGraphics.lineStyle(2, 0x000000, 1);
-    edCrouchGraphics.strokeRect(0, 0, 90, 70);
-    edCrouchGraphics.generateTexture('fighter-ed-crouch', 90, 70);
-    edCrouchGraphics.destroy();
+      // Skip if animation already exists
+      if (anims.exists(animKey)) continue;
 
-    // Create attack pose variants
-    this.createAttackTexture('will', CHARACTER_INFO.will.color, 'punch', 100, 120);
-    this.createAttackTexture('will', CHARACTER_INFO.will.color, 'kick', 110, 120);
-    this.createAttackTexture('ed', CHARACTER_INFO.ed.color, 'punch', 100, 120);
-    this.createAttackTexture('ed', CHARACTER_INFO.ed.color, 'kick', 110, 120);
-  }
-
-  private createAttackTexture(character: string, color: string, attackType: 'punch' | 'kick', width: number, height: number): void {
-    const graphics = this.make.graphics({ x: 0, y: 0 });
-    graphics.fillStyle(Phaser.Display.Color.HexStringToColor(color).color, 1);
-    graphics.fillRect(0, 0, 80, height);
-
-    // Extended arm/leg for attack
-    if (attackType === 'punch') {
-      graphics.fillRect(80, 30, width - 80, 25); // Extended arm
-    } else {
-      graphics.fillRect(80, 70, width - 80, 30); // Extended leg
+      anims.create({
+        key: animKey,
+        frames: anims.generateFrameNumbers(key, { start: config.start, end: config.end }),
+        frameRate: config.frameRate,
+        repeat: config.repeat,
+      });
     }
-
-    // Head
-    graphics.fillStyle(0xffd6c4, 1);
-    graphics.fillRect(20, 5, 40, 35);
-
-    graphics.lineStyle(2, 0x000000, 1);
-    graphics.strokeRect(0, 0, 80, height);
-    if (attackType === 'punch') {
-      graphics.strokeRect(80, 30, width - 80, 25);
-    } else {
-      graphics.strokeRect(80, 70, width - 80, 30);
-    }
-
-    graphics.generateTexture(`fighter-${character}-${attackType}`, width, height);
-    graphics.destroy();
-  }
-
-  private createHitboxTexture(): void {
-    // Yellow semi-transparent hitbox indicator
-    const hitboxGraphics = this.make.graphics({ x: 0, y: 0 });
-    hitboxGraphics.fillStyle(0xffff00, 0.5);
-    hitboxGraphics.fillRect(0, 0, 50, 40);
-    hitboxGraphics.lineStyle(2, 0xffff00, 1);
-    hitboxGraphics.strokeRect(0, 0, 50, 40);
-    hitboxGraphics.generateTexture('hitbox', 50, 40);
-    hitboxGraphics.destroy();
-
-    // Red hurtbox indicator (body collision)
-    const hurtboxGraphics = this.make.graphics({ x: 0, y: 0 });
-    hurtboxGraphics.fillStyle(0x00ff00, 0.3);
-    hurtboxGraphics.fillRect(0, 0, 60, 100);
-    hurtboxGraphics.lineStyle(2, 0x00ff00, 1);
-    hurtboxGraphics.strokeRect(0, 0, 60, 100);
-    hurtboxGraphics.generateTexture('hurtbox', 60, 100);
-    hurtboxGraphics.destroy();
   }
 
   private createEffectTextures(): void {

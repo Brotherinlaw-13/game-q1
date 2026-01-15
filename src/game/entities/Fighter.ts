@@ -5,11 +5,11 @@ import {
   CharacterId,
   MoveData,
 } from '../../types/game.types';
-import { GAME_CONFIG, MOVE_DATA, CHARACTER_INFO } from '../../constants/gameConstants';
+import { GAME_CONFIG, MOVE_DATA } from '../../constants/gameConstants';
 
 type AttackState = 'high_punch' | 'low_punch' | 'high_kick' | 'low_kick';
 
-export class Fighter extends Phaser.GameObjects.Container {
+export class Fighter extends Phaser.GameObjects.Sprite {
   public health: number;
   public maxHealth: number;
   public state: FighterState;
@@ -24,9 +24,8 @@ export class Fighter extends Phaser.GameObjects.Container {
   public readonly playerId: 1 | 2;
   public readonly characterId: CharacterId;
 
-  private bodyRect: Phaser.GameObjects.Rectangle;
-  private hitboxIndicator: Phaser.GameObjects.Rectangle;
   private isGrounded: boolean;
+  private lastState: FighterState;
 
   constructor(
     scene: Phaser.Scene,
@@ -35,7 +34,7 @@ export class Fighter extends Phaser.GameObjects.Container {
     playerId: 1 | 2,
     characterId: CharacterId
   ) {
-    super(scene, x, y);
+    super(scene, x, y, `fighter-${characterId}`);
 
     this.playerId = playerId;
     this.characterId = characterId;
@@ -44,6 +43,7 @@ export class Fighter extends Phaser.GameObjects.Container {
     this.health = GAME_CONFIG.MAX_HEALTH;
     this.maxHealth = GAME_CONFIG.MAX_HEALTH;
     this.state = 'idle';
+    this.lastState = 'idle';
     this.facingDirection = playerId === 1 ? 'right' : 'left';
     this.velocityX = 0;
     this.velocityY = 0;
@@ -53,23 +53,20 @@ export class Fighter extends Phaser.GameObjects.Container {
     this.currentMove = null;
     this.isGrounded = true;
 
-    // Get character color
-    const color = Phaser.Display.Color.HexStringToColor(
-      CHARACTER_INFO[characterId].color
-    ).color;
+    // Set origin to bottom center for proper ground alignment
+    this.setOrigin(0.5, 1);
 
-    // Create body rectangle (80x120)
-    this.bodyRect = scene.add.rectangle(0, -60, 80, 120, color);
-    this.bodyRect.setStrokeStyle(2, 0xffffff);
-    this.add(this.bodyRect);
+    // Scale up the sprite for better visibility
+    this.setScale(2);
 
-    // Create hitbox indicator (hidden by default)
-    this.hitboxIndicator = scene.add.rectangle(0, 0, 40, 30, 0xffff00, 0.5);
-    this.hitboxIndicator.setVisible(false);
-    this.add(this.hitboxIndicator);
+    // Flip based on facing direction
+    this.setFlipX(this.facingDirection === 'left');
 
     // Add to scene
     scene.add.existing(this);
+
+    // Play idle animation
+    this.play(`${characterId}-idle`);
   }
 
   public tick(input: PlayerInput): void {
@@ -78,7 +75,7 @@ export class Fighter extends Phaser.GameObjects.Container {
       this.hitStun--;
       this.applyGravity();
       this.updatePosition();
-      this.updateVisuals();
+      this.updateAnimation();
       if (this.hitStun === 0 && this.isGrounded) {
         this.state = 'idle';
       }
@@ -89,7 +86,7 @@ export class Fighter extends Phaser.GameObjects.Container {
     if (this.blockStun > 0) {
       this.blockStun--;
       this.updatePosition();
-      this.updateVisuals();
+      this.updateAnimation();
       if (this.blockStun === 0) {
         this.state = 'idle';
       }
@@ -101,7 +98,7 @@ export class Fighter extends Phaser.GameObjects.Container {
       this.handleAttackState();
       this.applyGravity();
       this.updatePosition();
-      this.updateVisuals();
+      this.updateAnimation();
       return;
     }
 
@@ -153,8 +150,8 @@ export class Fighter extends Phaser.GameObjects.Container {
     // Update position
     this.updatePosition();
 
-    // Update visuals
-    this.updateVisuals();
+    // Update animation
+    this.updateAnimation();
   }
 
   public takeDamage(amount: number, knockback: number, hitStunFrames: number): void {
@@ -171,7 +168,6 @@ export class Fighter extends Phaser.GameObjects.Container {
     // Cancel any current attack
     this.currentMove = null;
     this.stateFrame = 0;
-    this.hitboxIndicator.setVisible(false);
   }
 
   public applyBlockStun(blockStunFrames: number, pushback: number): void {
@@ -184,12 +180,14 @@ export class Fighter extends Phaser.GameObjects.Container {
   }
 
   public getHurtbox(): { x: number; y: number; width: number; height: number } {
-    // Body is 80x120, centered at y=-60 relative to container
+    // Hitbox based on sprite size (scaled)
+    const width = 64 * 2; // sprite width * scale
+    const height = 96 * 2; // sprite height * scale
     return {
-      x: this.x - 40,
-      y: this.y - 120,
-      width: 80,
-      height: 120,
+      x: this.x - width / 2,
+      y: this.y - height,
+      width: width,
+      height: height,
     };
   }
 
@@ -207,12 +205,13 @@ export class Fighter extends Phaser.GameObjects.Container {
     // Calculate hitbox position based on facing direction
     const hitboxData = this.currentMove.hitbox;
     const directionMultiplier = this.facingDirection === 'right' ? 1 : -1;
+    const scale = 2;
 
     return {
-      x: this.x + hitboxData.x * directionMultiplier - hitboxData.width / 2,
-      y: this.y - 60 + hitboxData.y - hitboxData.height / 2,
-      width: hitboxData.width,
-      height: hitboxData.height,
+      x: this.x + (hitboxData.x * directionMultiplier * scale) - (hitboxData.width * scale) / 2,
+      y: this.y - 96 * scale + hitboxData.y * scale - (hitboxData.height * scale) / 2,
+      width: hitboxData.width * scale,
+      height: hitboxData.height * scale,
     };
   }
 
@@ -222,6 +221,7 @@ export class Fighter extends Phaser.GameObjects.Container {
 
   public setFacingDirection(direction: 'left' | 'right'): void {
     this.facingDirection = direction;
+    this.setFlipX(direction === 'left');
   }
 
   public reset(x: number, y: number): void {
@@ -229,6 +229,7 @@ export class Fighter extends Phaser.GameObjects.Container {
     this.y = y;
     this.health = this.maxHealth;
     this.state = 'idle';
+    this.lastState = 'idle';
     this.velocityX = 0;
     this.velocityY = 0;
     this.hitStun = 0;
@@ -236,7 +237,7 @@ export class Fighter extends Phaser.GameObjects.Container {
     this.stateFrame = 0;
     this.currentMove = null;
     this.isGrounded = true;
-    this.hitboxIndicator.setVisible(false);
+    this.play(`${this.characterId}-idle`);
   }
 
   public setVictory(): void {
@@ -280,7 +281,6 @@ export class Fighter extends Phaser.GameObjects.Container {
       this.state = 'idle';
       this.currentMove = null;
       this.stateFrame = 0;
-      this.hitboxIndicator.setVisible(false);
     }
   }
 
@@ -330,49 +330,65 @@ export class Fighter extends Phaser.GameObjects.Container {
     }
   }
 
-  private updateVisuals(): void {
-    // Update body color based on state
-    let alpha = 1;
+  private updateAnimation(): void {
+    // Map state to animation name
+    let animName: string;
+
+    switch (this.state) {
+      case 'idle':
+        animName = 'idle';
+        break;
+      case 'walking_forward':
+      case 'walking_backward':
+        animName = 'walk';
+        break;
+      case 'jumping':
+        animName = 'jump';
+        break;
+      case 'crouching':
+        animName = 'crouch';
+        break;
+      case 'blocking':
+        animName = 'block';
+        break;
+      case 'high_punch':
+        animName = 'high_punch';
+        break;
+      case 'low_punch':
+        animName = 'low_punch';
+        break;
+      case 'high_kick':
+        animName = 'high_kick';
+        break;
+      case 'low_kick':
+        animName = 'low_kick';
+        break;
+      case 'hit_stun':
+        animName = 'hit';
+        break;
+      case 'victory':
+        animName = 'victory';
+        break;
+      case 'defeat':
+        animName = 'defeat';
+        break;
+      default:
+        animName = 'idle';
+    }
+
+    const fullAnimKey = `${this.characterId}-${animName}`;
+
+    // Only change animation if state changed
+    if (this.state !== this.lastState) {
+      this.play(fullAnimKey);
+      this.lastState = this.state;
+    }
+
+    // Flash when hit
     if (this.state === 'hit_stun') {
-      // Flash when hit
-      alpha = this.hitStun % 4 < 2 ? 0.5 : 1;
-    } else if (this.state === 'blocking') {
-      alpha = 0.8;
-    } else if (this.state === 'crouching') {
-      // Scale body to appear crouching
-      this.bodyRect.setScale(1, 0.7);
-      this.bodyRect.setY(-42);
+      this.setAlpha(this.hitStun % 4 < 2 ? 0.5 : 1);
     } else {
-      this.bodyRect.setScale(1, 1);
-      this.bodyRect.setY(-60);
+      this.setAlpha(1);
     }
-
-    this.bodyRect.setAlpha(alpha);
-
-    // Update hitbox indicator
-    if (this.currentMove) {
-      const startup = this.currentMove.startup;
-      const active = this.currentMove.active;
-
-      if (this.stateFrame >= startup && this.stateFrame < startup + active) {
-        // Show hitbox during active frames
-        const hitboxData = this.currentMove.hitbox;
-        const directionMultiplier = this.facingDirection === 'right' ? 1 : -1;
-
-        this.hitboxIndicator.setPosition(
-          hitboxData.x * directionMultiplier,
-          -60 + hitboxData.y
-        );
-        this.hitboxIndicator.setSize(hitboxData.width, hitboxData.height);
-        this.hitboxIndicator.setVisible(true);
-      } else {
-        this.hitboxIndicator.setVisible(false);
-      }
-    } else {
-      this.hitboxIndicator.setVisible(false);
-    }
-
-    // Flip body based on facing direction
-    this.bodyRect.setScale(this.facingDirection === 'left' ? -1 : 1, this.bodyRect.scaleY);
   }
 }
