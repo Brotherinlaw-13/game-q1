@@ -6,6 +6,7 @@ import {
   MoveData,
 } from '../../types/game.types';
 import { GAME_CONFIG, MOVE_DATA } from '../../constants/gameConstants';
+import { SoundSystem } from '../systems/SoundSystem';
 
 type AttackState = 'high_punch' | 'low_punch' | 'high_kick' | 'low_kick';
 
@@ -117,6 +118,7 @@ export class Fighter extends Phaser.GameObjects.Sprite {
       this.velocityY = GAME_CONFIG.JUMP_FORCE;
       this.isGrounded = false;
       this.state = 'jumping';
+      SoundSystem.playJump();
     } else if (input.left) {
       this.velocityX = -GAME_CONFIG.PLAYER_SPEED;
       if (this.isGrounded) {
@@ -266,6 +268,13 @@ export class Fighter extends Phaser.GameObjects.Sprite {
     this.currentMove = MOVE_DATA[attackType];
     this.stateFrame = 0;
     this.velocityX = 0;
+
+    // Play attack sound
+    if (attackType === 'high_punch' || attackType === 'low_punch') {
+      SoundSystem.playPunch();
+    } else {
+      SoundSystem.playKick();
+    }
   }
 
   private handleAttackState(): void {

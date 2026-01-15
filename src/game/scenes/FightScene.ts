@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Fighter } from '../entities/Fighter';
 import { InputSystem } from '../systems/InputSystem';
 import { CollisionSystem } from '../systems/CollisionSystem';
+import { SoundSystem } from '../systems/SoundSystem';
 import { EventBus, GameEvents } from '../EventBus';
 import { GAME_CONFIG } from '../../constants/gameConstants';
 
@@ -122,6 +123,11 @@ export class FightScene extends Phaser.Scene {
       this.lastTimerUpdate = time;
       this.roundState.timer--;
       this.emitTimerUpdate();
+
+      // Play warning sound when timer is low
+      if (this.roundState.timer <= 10 && this.roundState.timer > 0) {
+        SoundSystem.playTimerWarning();
+      }
 
       // Check for time out
       if (this.roundState.timer <= 0) {
@@ -250,6 +256,9 @@ export class FightScene extends Phaser.Scene {
     this.roundState.timer = GAME_CONFIG.ROUND_TIME;
     this.processedHits.clear();
 
+    // Play round start sound
+    SoundSystem.playRoundStart();
+
     // Emit round start event
     EventBus.emit(GameEvents.ROUND_START, {
       round: this.roundState.currentRound,
@@ -301,9 +310,11 @@ export class FightScene extends Phaser.Scene {
   ): void {
     if (hitResult.isBlocked) {
       defender.applyBlockStun(hitResult.blockStun, hitResult.knockback);
+      SoundSystem.playBlock();
       EventBus.emit(GameEvents.HIT_LANDED, { blocked: true, damage: 0 });
     } else {
       defender.takeDamage(hitResult.damage, hitResult.knockback, hitResult.hitStun);
+      SoundSystem.playHit();
       EventBus.emit(GameEvents.HIT_LANDED, { blocked: false, damage: hitResult.damage });
     }
   }
@@ -371,6 +382,9 @@ export class FightScene extends Phaser.Scene {
     this.roundState.phase = 'round_end';
     this.roundEndTimer = 180; // ~3 seconds at 60fps
 
+    // Play KO sound
+    SoundSystem.playKO();
+
     if (winner === 1) {
       this.roundState.player1RoundsWon++;
       this.player1.setVictory();
@@ -427,6 +441,9 @@ export class FightScene extends Phaser.Scene {
     this.roundState.phase = 'match_end';
 
     const matchWinner = this.roundState.player1RoundsWon > this.roundState.player2RoundsWon ? 1 : 2;
+
+    // Play victory sound
+    SoundSystem.playVictory();
 
     EventBus.emit(GameEvents.MATCH_END, {
       winner: matchWinner,
