@@ -1,6 +1,6 @@
 /**
- * HireSpace Fighters - Pixel Art Sprite Generator v3
- * Creates awesome 8-bit sprites with recognizable faces from photos
+ * HireSpace Fighters - Pixel Art Sprite Generator v4
+ * Uses the provided AI images with larger heads and minimal pixelation
  */
 
 const { createCanvas, loadImage } = require('canvas');
@@ -56,22 +56,6 @@ const ANIMATIONS = [
 ];
 
 /**
- * Pixelate an image to create 8-bit style
- */
-function pixelate(ctx, img, x, y, w, h, pixelSize) {
-  const tempCanvas = createCanvas(Math.floor(w / pixelSize), Math.floor(h / pixelSize));
-  const tempCtx = tempCanvas.getContext('2d');
-
-  // Draw scaled down
-  tempCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
-
-  // Draw scaled up (pixelated)
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(tempCanvas, x, y, w, h);
-  ctx.imageSmoothingEnabled = true;
-}
-
-/**
  * Draw a filled rectangle
  */
 function rect(ctx, x, y, w, h, color) {
@@ -80,37 +64,44 @@ function rect(ctx, x, y, w, h, color) {
 }
 
 /**
- * Draw the pixelated face from photo - LARGE and prominent
+ * Draw the face from photo - LARGER with gentle pixelation
  */
 function drawFace(ctx, x, y, size, photo, char) {
   if (photo) {
-    // Draw pixelated photo as main face
-    const pixelSize = 8; // Larger pixels for more 8-bit look
-    pixelate(ctx, photo, x, y, size, size, pixelSize);
+    // Create temp canvas for gentle pixelation
+    const tempSize = Math.floor(size / 2); // Only 2x pixelation to preserve detail
+    const tempCanvas = createCanvas(tempSize, tempSize);
+    const tempCtx = tempCanvas.getContext('2d');
 
-    // Add outline
-    ctx.strokeStyle = char.hairColor;
-    ctx.lineWidth = 2;
+    // Draw scaled down
+    tempCtx.drawImage(photo, 0, 0, tempSize, tempSize);
+
+    // Draw scaled up with nearest-neighbor (pixelated)
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(tempCanvas, x, y, size, size);
+    ctx.imageSmoothingEnabled = true;
+
+    // Subtle outline
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
     ctx.strokeRect(x, y, size, size);
   } else {
     // Fallback - draw simple face
     rect(ctx, x, y, size, size, char.skinTone);
-    // Eyes
-    rect(ctx, x + size * 0.25, y + size * 0.4, size * 0.15, size * 0.15, '#1a1a1a');
-    rect(ctx, x + size * 0.6, y + size * 0.4, size * 0.15, size * 0.15, '#1a1a1a');
-    // Mouth
-    rect(ctx, x + size * 0.3, y + size * 0.7, size * 0.4, size * 0.1, '#c47a7a');
+    rect(ctx, x + size * 0.2, y + size * 0.35, size * 0.2, size * 0.2, '#1a1a1a');
+    rect(ctx, x + size * 0.6, y + size * 0.35, size * 0.2, size * 0.2, '#1a1a1a');
+    rect(ctx, x + size * 0.25, y + size * 0.7, size * 0.5, size * 0.12, '#c47a7a');
   }
 }
 
 /**
- * Draw a full fighter sprite
+ * Draw a full fighter sprite with BIG head
  */
 function drawFighter(ctx, frameX, frameY, char, photo, pose, frame) {
-  const cx = frameX + FRAME_WIDTH / 2; // Center X
-  const groundY = frameY + FRAME_HEIGHT - 4; // Ground level
+  const cx = frameX + FRAME_WIDTH / 2;
+  const groundY = frameY + FRAME_HEIGHT - 4;
 
-  // Animation offsets
+  // Animation variables
   let bodyOffsetY = 0;
   let bodyOffsetX = 0;
   let headTilt = 0;
@@ -121,148 +112,132 @@ function drawFighter(ctx, frameX, frameY, char, photo, pose, frame) {
   let crouchAmount = 0;
   let kickExtend = 0;
 
-  // Pose-specific adjustments
+  // Pose animations
   switch (pose) {
     case 'idle':
       bodyOffsetY = Math.sin(frame * 0.8) * 2;
       break;
     case 'walk':
-      bodyOffsetY = Math.abs(Math.sin(frame * 1.5)) * 3;
-      leftLegSplit = Math.sin(frame * 1.5) * 8;
-      rightLegSplit = -Math.sin(frame * 1.5) * 8;
+      bodyOffsetY = Math.abs(Math.sin(frame * 1.5)) * 2;
+      leftLegSplit = Math.sin(frame * 1.5) * 6;
+      rightLegSplit = -Math.sin(frame * 1.5) * 6;
       break;
     case 'jump':
-      bodyOffsetY = -15 - frame * 5;
-      leftLegSplit = -5;
-      rightLegSplit = 5;
+      bodyOffsetY = -12 - frame * 4;
+      leftLegSplit = -4;
+      rightLegSplit = 4;
       break;
     case 'crouch':
     case 'block':
-      crouchAmount = 20;
+      crouchAmount = 16;
       if (pose === 'block') {
-        leftArmExtend = -5;
-        rightArmExtend = -5;
+        leftArmExtend = -4;
+        rightArmExtend = -4;
       }
       break;
     case 'high_punch':
-      rightArmExtend = frame < 3 ? frame * 12 : 24;
-      bodyOffsetX = frame < 3 ? frame * 2 : 4;
+      rightArmExtend = frame < 3 ? frame * 10 : 20;
+      bodyOffsetX = frame < 3 ? frame * 1.5 : 3;
       break;
     case 'low_punch':
-      rightArmExtend = frame < 2 ? frame * 10 : 18;
-      crouchAmount = 10;
-      bodyOffsetX = frame < 2 ? frame * 2 : 3;
+      rightArmExtend = frame < 2 ? frame * 8 : 14;
+      crouchAmount = 8;
+      bodyOffsetX = frame < 2 ? frame * 1.5 : 2;
       break;
     case 'high_kick':
-      kickExtend = frame < 4 ? frame * 8 : 24;
-      bodyOffsetX = frame < 4 ? frame * 2 : 6;
+      kickExtend = frame < 4 ? frame * 6 : 18;
+      bodyOffsetX = frame < 4 ? frame * 1.5 : 4;
       break;
     case 'low_kick':
-      kickExtend = frame < 3 ? frame * 10 : 25;
-      crouchAmount = 15;
+      kickExtend = frame < 3 ? frame * 8 : 20;
+      crouchAmount = 12;
       break;
     case 'hit':
-      bodyOffsetX = -frame * 5;
-      headTilt = frame * 3;
+      bodyOffsetX = -frame * 4;
+      headTilt = frame * 2;
       break;
     case 'victory':
-      leftArmExtend = -15;
-      rightArmExtend = -15;
-      bodyOffsetY = Math.sin(frame * 1.2) * 4;
+      leftArmExtend = -12;
+      rightArmExtend = -12;
+      bodyOffsetY = Math.sin(frame * 1.2) * 3;
       break;
     case 'defeat':
-      bodyOffsetY = frame * 12;
-      headTilt = frame * 8;
-      crouchAmount = frame * 8;
+      bodyOffsetY = frame * 10;
+      headTilt = frame * 6;
+      crouchAmount = frame * 6;
       break;
   }
 
-  // Calculate positions
-  const headSize = 24;
-  const bodyWidth = 20;
-  const bodyHeight = 28 - crouchAmount * 0.3;
-  const legWidth = 8;
-  const legHeight = 24 - crouchAmount * 0.5;
-  const armWidth = 6;
-  const armLength = 18;
+  // Larger proportions - BIG HEAD style
+  const headSize = 36; // Much bigger head!
+  const bodyWidth = 18;
+  const bodyHeight = 22 - crouchAmount * 0.25;
+  const legWidth = 7;
+  const legHeight = 20 - crouchAmount * 0.4;
+  const armWidth = 5;
+  const armLength = 14;
 
   const headY = groundY - legHeight - bodyHeight - headSize + bodyOffsetY + crouchAmount;
   const bodyY = groundY - legHeight - bodyHeight + bodyOffsetY + crouchAmount;
-  const legY = groundY - legHeight + crouchAmount * 0.5;
+  const legY = groundY - legHeight + crouchAmount * 0.4;
 
-  // Draw shadow
+  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
-  ctx.ellipse(cx + bodyOffsetX, groundY + 2, 18, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx + bodyOffsetX, groundY + 2, 14, 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Draw legs
+  // Legs
   const legBaseX = cx + bodyOffsetX;
 
   if (kickExtend > 0) {
-    // Kicking leg
     rect(ctx, legBaseX - legWidth - 2, legY, legWidth, legHeight, char.pantsMain);
-    rect(ctx, legBaseX - legWidth - 2, groundY - 6, legWidth + 2, 6, char.shoeColor);
-    // Extended kick leg
-    rect(ctx, legBaseX + 2, legY + 5, kickExtend + legWidth, 8, char.pantsMain);
-    rect(ctx, legBaseX + kickExtend + legWidth - 4, legY + 4, 8, 10, char.shoeColor);
+    rect(ctx, legBaseX - legWidth - 2, groundY - 5, legWidth + 2, 5, char.shoeColor);
+    rect(ctx, legBaseX + 2, legY + 4, kickExtend + legWidth, 7, char.pantsMain);
+    rect(ctx, legBaseX + kickExtend + legWidth - 3, legY + 3, 7, 9, char.shoeColor);
   } else {
-    // Normal legs
     rect(ctx, legBaseX - legWidth - 2 + leftLegSplit, legY, legWidth, legHeight, char.pantsMain);
     rect(ctx, legBaseX + 2 + rightLegSplit, legY, legWidth, legHeight, char.pantsMain);
-    // Shoes
-    rect(ctx, legBaseX - legWidth - 4 + leftLegSplit, groundY - 6, legWidth + 4, 6, char.shoeColor);
-    rect(ctx, legBaseX + rightLegSplit, groundY - 6, legWidth + 4, 6, char.shoeColor);
+    rect(ctx, legBaseX - legWidth - 3 + leftLegSplit, groundY - 5, legWidth + 3, 5, char.shoeColor);
+    rect(ctx, legBaseX + rightLegSplit, groundY - 5, legWidth + 3, 5, char.shoeColor);
   }
 
-  // Draw body
+  // Body
   const bodyX = cx - bodyWidth / 2 + bodyOffsetX;
-  rect(ctx, bodyX - 2, bodyY, bodyWidth + 4, 8, char.shirtMain); // Shoulders
-  rect(ctx, bodyX, bodyY + 6, bodyWidth, bodyHeight - 6, char.shirtMain);
-  // Shirt details
-  rect(ctx, bodyX + 3, bodyY + 10, bodyWidth - 6, bodyHeight - 14, char.shirtDark);
-  rect(ctx, bodyX + 5, bodyY + 12, bodyWidth - 10, bodyHeight - 18, char.shirtMain);
-  // Belt
-  rect(ctx, bodyX, bodyY + bodyHeight - 4, bodyWidth, 4, '#3a3a3a');
-  rect(ctx, cx - 2 + bodyOffsetX, bodyY + bodyHeight - 3, 4, 2, '#ffd700');
+  rect(ctx, bodyX - 2, bodyY, bodyWidth + 4, 6, char.shirtMain);
+  rect(ctx, bodyX, bodyY + 5, bodyWidth, bodyHeight - 5, char.shirtMain);
+  rect(ctx, bodyX + 2, bodyY + 8, bodyWidth - 4, bodyHeight - 11, char.shirtDark);
+  rect(ctx, bodyX, bodyY + bodyHeight - 3, bodyWidth, 3, '#3a3a3a');
+  rect(ctx, cx - 2 + bodyOffsetX, bodyY + bodyHeight - 2, 4, 2, '#ffd700');
 
-  // Draw arms
-  const armY = bodyY + 4;
+  // Arms
+  const armY = bodyY + 3;
 
-  // Left arm
   if (leftArmExtend < 0) {
-    // Arm raised
     rect(ctx, bodyX - armWidth - 2, armY + leftArmExtend, armWidth, armLength + leftArmExtend, char.shirtMain);
-    rect(ctx, bodyX - armWidth, armY + leftArmExtend - 4, armWidth - 2, 6, char.skinTone);
+    rect(ctx, bodyX - armWidth, armY + leftArmExtend - 3, armWidth - 1, 5, char.skinTone);
   } else {
     rect(ctx, bodyX - armWidth - 2, armY, armWidth, armLength, char.shirtMain);
-    rect(ctx, bodyX - armWidth, armY + armLength - 2, armWidth - 2, 6, char.skinTone);
+    rect(ctx, bodyX - armWidth, armY + armLength - 2, armWidth - 1, 5, char.skinTone);
   }
 
-  // Right arm
   if (rightArmExtend > 0) {
-    // Punching
-    rect(ctx, bodyX + bodyWidth, armY + 2, rightArmExtend + 8, armWidth, char.shirtMain);
-    rect(ctx, bodyX + bodyWidth + rightArmExtend + 4, armY, 8, armWidth + 4, char.skinTone);
+    rect(ctx, bodyX + bodyWidth, armY + 2, rightArmExtend + 6, armWidth, char.shirtMain);
+    rect(ctx, bodyX + bodyWidth + rightArmExtend + 3, armY, 6, armWidth + 3, char.skinTone);
   } else if (rightArmExtend < 0) {
-    // Arm raised
     rect(ctx, bodyX + bodyWidth, armY + rightArmExtend, armWidth, armLength + rightArmExtend, char.shirtMain);
-    rect(ctx, bodyX + bodyWidth + 2, armY + rightArmExtend - 4, armWidth - 2, 6, char.skinTone);
+    rect(ctx, bodyX + bodyWidth + 1, armY + rightArmExtend - 3, armWidth - 1, 5, char.skinTone);
   } else {
     rect(ctx, bodyX + bodyWidth, armY, armWidth, armLength, char.shirtMain);
-    rect(ctx, bodyX + bodyWidth + 2, armY + armLength - 2, armWidth - 2, 6, char.skinTone);
+    rect(ctx, bodyX + bodyWidth + 1, armY + armLength - 2, armWidth - 1, 5, char.skinTone);
   }
 
-  // Draw neck
-  rect(ctx, cx - 4 + bodyOffsetX, bodyY - 4, 8, 6, char.skinTone);
+  // Neck
+  rect(ctx, cx - 3 + bodyOffsetX, bodyY - 3, 6, 5, char.skinTone);
 
-  // Draw head with pixelated photo - LARGE AND PROMINENT
+  // HEAD - Big and prominent with the actual image!
   const headX = cx - headSize / 2 + bodyOffsetX + headTilt;
   drawFace(ctx, headX, headY, headSize, photo, char);
-
-  // Add hair on top
-  rect(ctx, headX, headY - 2, headSize, 4, char.hairColor);
-  rect(ctx, headX + 2, headY - 4, headSize - 4, 4, char.hairColor);
 }
 
 /**
@@ -275,7 +250,7 @@ async function generateSpriteSheet(charId) {
   let photo = null;
   try {
     photo = await loadImage(char.photoPath);
-    console.log(`  Loaded photo: ${char.photoPath}`);
+    console.log(`  Loaded photo: ${char.photoPath} (${photo.width}x${photo.height})`);
   } catch (e) {
     console.log(`  No photo found, using fallback face`);
   }
@@ -300,12 +275,10 @@ async function generateSpriteSheet(charId) {
     }
   }
 
-  // Save
   const buffer = canvas.toBuffer('image/png');
   fs.writeFileSync(char.outputPath, buffer);
   console.log(`  Saved: ${char.outputPath}`);
 
-  // Metadata
   const meta = { frameWidth: FRAME_WIDTH, frameHeight: FRAME_HEIGHT, animations: {} };
   let start = 0;
   for (const anim of ANIMATIONS) {
@@ -316,7 +289,7 @@ async function generateSpriteSheet(charId) {
 }
 
 async function main() {
-  console.log('\n=== HireSpace Fighters Sprite Generator v3 ===\n');
+  console.log('\n=== HireSpace Fighters Sprite Generator v4 ===\n');
   for (const id of Object.keys(CHARACTERS)) {
     await generateSpriteSheet(id);
   }
