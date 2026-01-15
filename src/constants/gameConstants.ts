@@ -14,26 +14,27 @@ export const GAME_CONFIG = {
   STAGE_RIGHT_BOUND: 1230,
 };
 
+// Using Phaser KeyCodes (numeric values)
 export const INPUT_MAPPINGS = {
   player1: {
-    left: 'KeyA',
-    right: 'KeyD',
-    up: 'KeyW',
-    down: 'KeyS',
-    highPunch: 'KeyT',
-    lowPunch: 'KeyY',
-    highKick: 'KeyG',
-    lowKick: 'KeyH',
+    left: 65,      // A
+    right: 68,     // D
+    up: 87,        // W
+    down: 83,      // S
+    highPunch: 84, // T
+    lowPunch: 89,  // Y
+    highKick: 71,  // G
+    lowKick: 72,   // H
   },
   player2: {
-    left: 'ArrowLeft',
-    right: 'ArrowRight',
-    up: 'ArrowUp',
-    down: 'ArrowDown',
-    highPunch: 'KeyU',
-    lowPunch: 'KeyI',
-    highKick: 'KeyJ',
-    lowKick: 'KeyK',
+    left: 37,      // ArrowLeft
+    right: 39,     // ArrowRight
+    up: 38,        // ArrowUp
+    down: 40,      // ArrowDown
+    highPunch: 85, // U
+    lowPunch: 73,  // I
+    highKick: 74,  // J
+    lowKick: 75,   // K
   },
 };
 
